@@ -90,6 +90,8 @@ int find_maximum_subarray(int array[],int low,int high,int* max_left,int* max_ri
 		(*max_value)=right_part_max_value;
 
 	}
+
+	return 0;
 }
 
 /*Find the maximum subarray cross the middle of the array*/
@@ -150,4 +152,5 @@ int find_maximum_subarray_cross_mid(int array[],int low,int high,int* max_left,i
 	(*max_right)=max_right_index;
 	(*max_value)=max_left_value+max_right_value;
 	
+	return 0;
 }
