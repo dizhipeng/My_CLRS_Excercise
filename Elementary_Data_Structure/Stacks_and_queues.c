@@ -10,10 +10,8 @@ int top=-1;	/*top points to the position of the top element in the stack*/
 #define QueueSize 10
 int enqueue(int a[],int x);
 int dequeue(int a[],int *x);
-int head=1;	/*head points to the position of the first element in the queue*/
-int tail=1;	/*tail points to one position after the last element in the queue*/
-/*To prevent the wrap around operation from interfering the full-checking process*/
-/*head and tail starts from the second position of the queue*/
+int head=0;	/*head points to the position of the first element in the queue*/
+int tail=0;	/*tail points to one position after the last element in the queue*/
 
 int main(void)
 {	
@@ -100,7 +98,7 @@ int pop(int a[],int *x)
 
 int enqueue(int a[],int x)
 {
-	if((tail+1)==head)	/*The queue is full*/
+	if(((tail+1)%QueueSize)==head)	/*The queue is full*/
 	{
 		printf("Queue overflow\r\n");
 		return -1;
