@@ -2,7 +2,7 @@
 #include <malloc.h>
 #include <string.h>
 
-#define V_NUM	10
+#define V_NUM	6
 #define WHITE 	0
 #define GREY  	1
 #define BLACK  	2
@@ -37,8 +37,9 @@ typedef struct vertices_array
 
 } VERTICES_ARRAY;
 
-/*Breadth-first search, source ranges from 'r' to 'y'*/
-int BFS(VERTICES_ARRAY vertices[],char source);
+/*Depth-first search*/
+int DFS(VERTICES_ARRAY vertices[],int size);
+int DFS_vertex(VERTICES_ARRAY vertices[],int index);
 
 int main(void)
 {
@@ -52,7 +53,7 @@ int main(void)
 	int vertex_index=0;
 
 	/*The adjacent vertices for every vertex, seperated by |*/
-	char connections[]="vs|rw|xwu|txy|r|stx|wtuy|xu";
+	char connections[]="vx|y|yz|v|x|z";
 	int connect_num=sizeof(connections)/sizeof(connections[0]);
 	
 
@@ -71,7 +72,7 @@ int main(void)
 
 		/*New item in the adj list*/
 		new_vertex=(ADJACENCY_LIST *)malloc(sizeof(ADJACENCY_LIST));
-		new_vertex->vertex=connections[i]-'r';
+		new_vertex->vertex=connections[i]-'u';
 		new_vertex->next=0;
 
 		/*If first node in the adj list, put it directly as the head*/
@@ -99,18 +100,51 @@ int main(void)
 		new_vertex=vertices[i].Adj;
 		while(new_vertex!=0)
 		{
-			printf("(%c,%c),",i+'r',new_vertex->vertex+'r');
+			printf("(%c,%c),",i+'u',new_vertex->vertex+'u');
 			new_vertex=new_vertex->next;
 		}
 	}
 	printf("\b}\r\n\r\n");
 
 	/*Begin BFS from vertex s*/
-	BFS(vertices,'s');
+	printf("Do the Depth-first search to G, for every vertex in V:\r\n");
+	DFS(vertices,V_NUM);
 }
 
-int BFS(VERTICES_ARRAY vertices[],char source)
+int DFS(VERTICES_ARRAY vertices[],int size)
 {
+
+	int i=0;
+	for(i=0;i<size;i++)
+	{
+		if(vertices[i].color==WHITE)
+		{
+			DFS_vertex(vertices,i);
+		}
+		
+	}
+	return 0;
+}
+
+
+int DFS_vertex(VERTICES_ARRAY vertices[],int index)
+{
+	printf("Accessing vertex %c\r\n",index+'u');
+	vertices[index].color=BLACK;
+	
+	ADJACENCY_LIST *adj_vertex=vertices[index].Adj;
+	/*DFS all WHITE vertices in the adjancency list of current vertex*/
+	while(adj_vertex!=0)
+	{
+		if(vertices[adj_vertex->vertex].color==WHITE)
+		{
+			DFS_vertex(vertices,adj_vertex->vertex);
+		}
+		adj_vertex=adj_vertex->next;
+	}
+}
+
+#if 0
 	if(source<'r'||source>'y')
 	{
 		return -1;
@@ -125,15 +159,12 @@ int BFS(VERTICES_ARRAY vertices[],char source)
 	int node_index=source-'r';
 	enqueue(queue,node_index);
 
-	/*Dequeue a node. If the queue is empty, BFS is over*/
 	while(dequeue(queue,&node_index)!=-1)
 	{
 
-		/*Access the dequeued vertex, color it black. It's the current vertex*/
 		printf("Accessing vertex %c, predecessor is %c, distance to source %c is %d\r\n",node_index+'r',vertices[node_index].pre+'r',source,vertices[node_index].distance);
-		vertices[node_index].color=BLACK;
 
-		/*Equeue every white vertices in the ajdacency list of the current vertex, color them to grey, compute their distances to the source, record its predecessor*/
+		vertices[node_index].color=BLACK;
 		current_node=vertices[node_index].Adj;
 		while(current_node!=0)
 		{
@@ -149,34 +180,6 @@ int BFS(VERTICES_ARRAY vertices[],char source)
 
 	}
 
-}
 
-
-/*Queue realized in another excercise*/
-int enqueue(int a[],int x)
-{
-	if(((tail+1)%QueueSize)==head)	/*The queue is full*/
-	{
-		return -1;
-	}
-	else
-	{
-		a[tail++]=x;
-		tail%=QueueSize;	/*Wrap around when tail reach the last position*/
-		return 0;
-	}
 }
-
-int dequeue(int a[],int* x)
-{
-	if(tail==head)	/*The queue is empty*/
-	{
-		return -1;
-	}
-	else
-	{
-		(*x)=a[head++];
-		head%=QueueSize;	/*Wrap around when head reach the last position*/
-		return 0;
-	}
-}
+#endif
