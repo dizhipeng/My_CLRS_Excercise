@@ -15,7 +15,7 @@ typedef struct adjacency_list
 	int weight;		/*w(u,v), irrelevant for unweighted path*/
 	struct adjacency_list *next; 	/*pointer for linked list*/
 
-} ADJACENCY_LIST;
+} ADJACENCY_LIST,TOPOSORT;
 
 /*Structure of Vertices*/
 typedef struct vertices_array
@@ -31,13 +31,13 @@ typedef struct vertices_array
 } VERTICES_ARRAY;
 
 /*Depth-first search*/
-int DFS(VERTICES_ARRAY vertices[],int size);
-int DFS_vertex(VERTICES_ARRAY vertices[],int index);
+int topo_sort(VERTICES_ARRAY vertices[],int size,TOPOSORT sorted[]);
+int DFS_vertex(VERTICES_ARRAY vertices[],int index,TOPOSORT sorted[],int *position);
 
 int main(void)
 {
 	VERTICES_ARRAY vertices[V_NUM];		/*Space cost O(V+E), good for sparse graph*/
-	memset(vertices,0,sizeof(vertices));
+	memset(vertices,0,sizeof(vertices));		
 
 	ADJACENCY_LIST *new_vertex=0;	
 	ADJACENCY_LIST *list_tail=0;
@@ -99,20 +99,26 @@ int main(void)
 	}
 	printf("\b}\r\n\r\n");
 
-	/*Begin BFS from vertex s*/
-	printf("Do the Depth-first search to G, for every vertex in V:\r\n");
-	DFS(vertices,V_NUM);
+	printf("Do the topological sort for G:\r\n");
+	TOPOSORT sorted[V_NUM];		/*Result for topoligcal sort for direceted acyclic graph G*/
+	topo_sort(vertices,V_NUM,sorted);
+
+	for(i=0;i<V_NUM;i++)
+	{
+		printf("%d,",sorted[i].vertex);
+	}
 }
 
-int DFS(VERTICES_ARRAY vertices[],int size)
+int topo_sort(VERTICES_ARRAY vertices[],int size,TOPOSORT sorted[])
 {
 
-	int i=0;
+	int i=0,position=size-1;
+	
 	for(i=0;i<size;i++)
 	{
 		if(vertices[i].color==WHITE)
 		{
-			DFS_vertex(vertices,i);
+			DFS_vertex(vertices,i,sorted,&position);
 		}
 		
 	}
@@ -120,7 +126,7 @@ int DFS(VERTICES_ARRAY vertices[],int size)
 }
 
 
-int DFS_vertex(VERTICES_ARRAY vertices[],int index)
+int DFS_vertex(VERTICES_ARRAY vertices[],int index,TOPOSORT sorted[],int *position)
 {
 	printf("Accessing vertex %c\r\n",index+'u');
 	vertices[index].color=BLACK;
@@ -131,9 +137,15 @@ int DFS_vertex(VERTICES_ARRAY vertices[],int index)
 	{
 		if(vertices[adj_vertex->vertex].color==WHITE)
 		{
-			DFS_vertex(vertices,adj_vertex->vertex);
+			//DFS_vertex(vertices,adj_vertex->vertex);
 		}
 		adj_vertex=adj_vertex->next;
 	}
+
+	sorted[*position].vertex=index;
+	--(*position);
+	printf("%d\r\n",index);
+	
+	return 0;
 }
 
