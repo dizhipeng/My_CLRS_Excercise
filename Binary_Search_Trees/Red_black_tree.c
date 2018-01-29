@@ -12,6 +12,7 @@ typedef struct binary_tree_node
 	struct binary_tree_node *left;
 	struct binary_tree_node *right;
 	int color;
+	int size;	/*Field for order-statistics, save the size of the tree rooted at this node*/
 }BINARY_TREE_NODE;
 
 /*The nil node for the parent of root and the leaves*/
@@ -52,6 +53,10 @@ int rotate_right(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node);
 int correct_insertion_voilation(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node);
 int correct_deletion_voilation(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node);
 
+/*Adding operations for order-statistic*/
+BINARY_TREE_NODE* get_node_of_rank(BINARY_TREE_NODE *root,int rank);
+int determin_rank_of_node(BINARY_TREE_NODE *root,BINARY_TREE_NODE *node);
+
 int main(void)
 {
 	init_nil();
@@ -59,9 +64,15 @@ int main(void)
 	BINARY_TREE_NODE* root_pointer=0;
 	BINARY_TREE_NODE* node=0;
 
-	int keys[]={21,24,26,28,30,32,34,36,38,40,42,18,16,14,12,10,8,6,4,2,37,20,1,3,5,7,33,35,31,43,45};
+	//int keys[]={21,24,26,28,30,32,34,36,38,40,42,18,16,14,12,10,8,6,4,2,37,20,1,3,5,7,33,35,31,43,45};
+	int keys[20]={0};
 	int array_size=sizeof(keys)/sizeof(keys[0]);
 	int i=0;
+
+	for(i=0;i<array_size;++i)
+	{
+		keys[i]=5+i;
+	}
 
 	for(i=0;i<array_size;++i)
 	{
@@ -72,6 +83,7 @@ int main(void)
 		node->right=NIL;
 		node->parent=NIL;
 		node->color=RED;	/*Newly inserted node is always red*/
+		node->size=1;
 
 		insert_node(&root_pointer,node);
 
@@ -93,18 +105,38 @@ int main(void)
 	printf("\b \r\n");
 	inorder_traverse(root_pointer);
 	printf("\b \r\n\r\n");
-	node=search_key(root_pointer,16);
-	delete_node(&root_pointer,node);
+
+	printf("Getting a node by a rank, and then verifying the rank by the node:\r\n");
+	for(i=0;i<array_size;++i)
+	{
+		node=get_node_of_rank(root_pointer,1+i);
+		printf("The node at rank %d has the key %d\r\n",determin_rank_of_node(root_pointer,node),node->key);
+	}
+
+	//for(i=array_size/2;i>=0;--i)
+	//{
+		//node=search_key(root_pointer,26);
+		//printf("Deleting %d\r\n",node->key);
+		//delete_node(&root_pointer,node);	
+	//}
+
+	//printf("Preorder and inorder traversing the binary tree after an insertion:\r\n");
+	//preorder_traverse(root_pointer);
+	//printf("\b \r\n");
+	//inorder_traverse(root_pointer);
+	//printf("\b \r\n\r\n");
+
+	//delete_node(&root_pointer,node);
 
 	//node=search_key(root_pointer,14);
 	//delete_node(&root_pointer,node);
 
-	printf("Preorder and inorder traversing the binary tree after an insertion:\r\n");
-	preorder_traverse(root_pointer);
-	printf("\b \r\n");
-	inorder_traverse(root_pointer);
-	printf("\b \r\n\r\n");
-	//node=search_key(root_pointer,keys[0]);
+	//printf("Preorder and inorder traversing the binary tree after an insertion:\r\n");
+	//preorder_traverse(root_pointer);
+	//printf("\b \r\n");
+	//inorder_traverse(root_pointer);
+	//("\b \r\n\r\n");
+	////node=search_key(root_pointer,keys[0]);
 
 	//printf("key=%d\r\n",node->key);
 
@@ -116,12 +148,21 @@ int delete_node(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 	BINARY_TREE_NODE *y=0;		/*Point to z if z has only one child, otherwise point to z's successor that is going to be replace z*/
 	BINARY_TREE_NODE *x=0;		/*Point to the node that is going to replace y. x is the only source that causes voilation*/
 	int y_original_color=BLACK;	/*Save y's color before any change*/
+	BINARY_TREE_NODE *cursor=0;	
 
 	if(node->left==NIL)		/*Left subtree is empty*/	/*y=z,x replaces y*/
 	{
 		y=node;
 		x=node->right;
 		y_original_color=y->color;
+
+		cursor=y;		/*Decreasing the size of all node by 1 upwards from y until reach the NIL*/
+		while(cursor!=NIL)
+		{
+			(cursor->size)--;
+			cursor=cursor->parent;
+		}
+
 		transplant(root,y,x);
 	}
 	else if(node->right==NIL)		/*Right subtree is empty*/	/*y=z,x replaces y*/
@@ -129,6 +170,14 @@ int delete_node(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 		y=node;
 		x=node->left;
 		y_original_color=y->color;
+
+		cursor=y;		/*Decreasing the size of all node by 1 upwards from y until reach the NIL*/
+		while(cursor!=NIL)
+		{
+			(cursor->size)--;
+			cursor=cursor->parent;
+		}
+
 		transplant(root,y,x);
 	}
 	else		/*Neither left nor right subtree is empty*/
@@ -136,6 +185,14 @@ int delete_node(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 		y=minimum_key_node(node->right);		/*y is node's successor who will replace node*/
 		x=y->right;
 		y_original_color=y->color;
+
+		cursor=y;		/*Decreasing the size of all node by 1 upwards from y until reach the NIL*/
+		while(cursor!=NIL)
+		{
+			(cursor->size)--;
+			cursor=cursor->parent;
+		}
+
 		if(y!=node->right)
 		{
 			/*Replace successor right child to successor*/
@@ -160,7 +217,7 @@ int delete_node(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 
 	if(y_original_color==BLACK)			/*Only when y is red, x will be red-black or double-black*/
 	{
-//		correct_deletion_voilation(root,x);	/*Deal with voilation of x*/
+		correct_deletion_voilation(root,x);	/*Deal with voilation of x*/
 	}
 
 	free(node);
@@ -201,6 +258,7 @@ int correct_deletion_voilation(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 					sibling->left->color=BLACK;
 					sibling->color=RED;
 					rotate_right(root,sibling);
+					sibling=x->parent->right;
 				}
 			}
 
@@ -209,6 +267,7 @@ int correct_deletion_voilation(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 			x->parent->color=BLACK;
 			sibling->right->color=BLACK;
 			rotate_left(root,x->parent);
+			break;
 
 		}
 		else
@@ -237,6 +296,7 @@ int correct_deletion_voilation(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 					sibling->right->color=BLACK;
 					sibling->color=RED;
 					rotate_left(root,sibling);
+					sibling=x->parent->left;
 				}
 			}
 
@@ -245,7 +305,7 @@ int correct_deletion_voilation(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 			x->parent->color=BLACK;
 			sibling->left->color=BLACK;
 			rotate_right(root,x->parent);
-
+			break;
 		}
 	}
 	x->color=BLACK;	/*Color x black directly to turn x from red-black to black*/
@@ -298,13 +358,13 @@ int inorder_traverse(BINARY_TREE_NODE *node)
 	{
 		/*Inorder traverse: Left-Root-Right */
 		inorder_traverse(node->left);
-		if(node->color)
+		if(node->color==RED)
 		{
-			printf("%d,B|",node->key);
+			printf("%d,R,%d|",node->key,node->size);
 		}
 		else
 		{
-			printf("%d,R|",node->key);
+			printf("%d,B,%d|",node->key,node->size);
 		}
 		inorder_traverse(node->right);		
 	}
@@ -317,13 +377,13 @@ int preorder_traverse(BINARY_TREE_NODE *node)
 	if(node!=NIL)		/*recursion termination condition: the tree is empty*/
 	{
 		/*Inorder traverse: Left-Root-Right */
-		if(node->color)
+		if(node->color==RED)
 		{
-			printf("%d,B|",node->key);
+			printf("%d,R,%d|",node->key,node->size);
 		}
 		else
 		{
-			printf("%d,R|",node->key);
+			printf("%d,B,%d|",node->key,node->size);
 		}
 		preorder_traverse(node->left);
 		preorder_traverse(node->right);		
@@ -371,6 +431,7 @@ int insert_node(BINARY_TREE_NODE **root,BINARY_TREE_NODE *new_node)
 		{
 			current=current->right;
 		}
+		(trailing->size)++;	/*Increasing the size of all node by 1 along the path*/
 	}
 
 	/*Insert new node*/
@@ -419,13 +480,6 @@ int rotate_left(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 	BINARY_TREE_NODE *new_node=node->right;
 	transplant(root,node,new_node);
 
-	/*Traversing*/
-	//printf("\r\nPreorder traversing the binary tree:\r\n");
-	//preorder_traverse(*root);
-	//printf("\b \r\nInorder traversing the binary tree:\r\n");
-	//inorder_traverse(*root);
-	//printf("\b \r\n\r\n");
-
 	if(new_node->left!=NIL)
 	{	
 		new_node->left->parent=node;
@@ -434,6 +488,9 @@ int rotate_left(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 
 	node->parent=new_node;
 	new_node->left=node;
+
+	new_node->size=node->size;				/*The new root has subtree nodes as many as the previous root*/
+	node->size=(node->left->size)+(node->right->size)+1;	/*Recomputing the previous root's size*/
 }
 
 int rotate_right(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
@@ -449,6 +506,9 @@ int rotate_right(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 
 	node->parent=new_node;
 	new_node->right=node;
+
+	new_node->size=node->size;				/*The new root has subtree nodes as many as the previous root*/
+	node->size=(node->left->size)+(node->right->size)+1;	/*Recomputing the previous root's size*/
 }
 
 /*The newly added node could voilate the properties of red-black tree*/
@@ -522,5 +582,48 @@ int correct_insertion_voilation(BINARY_TREE_NODE **root,BINARY_TREE_NODE *node)
 
 	(*root)->color=BLACK;
 
+}
+
+/*Return the node at a given rank in the tree*/
+BINARY_TREE_NODE* get_node_of_rank(BINARY_TREE_NODE *root,int rank)
+{
+	BINARY_TREE_NODE* current=root;
+	int current_rank=current->left->size+1;
+
+	while(current_rank!=rank)
+	{
+		if(rank>current_rank)		
+		{
+			current=current->right;	/*rank is bigger than current rank, then search in the right subtree*/
+			rank-=current_rank;	/*Because there have been current_ranks smaller keys, the rank should subtract these keys*/
+		}
+		else
+		{
+			current=current->left;		/*rank is small than current rank, then search in the left subtree*/
+		}
+		
+		current_rank=current->left->size+1;	/*Update current rank*/
+	}
+	
+	return current;
+}
+
+/*Return the rank of a given node in the tree*/
+int determin_rank_of_node(BINARY_TREE_NODE *root,BINARY_TREE_NODE *node)
+{
+	BINARY_TREE_NODE* current=node;
+	int current_rank=current->left->size+1;
+
+	while(current!=root)
+	{
+		if(current==current->parent->right)		
+		{
+			current_rank+=current->parent->left->size + 1;
+		}
+
+		current=current->parent;
+	}
+
+	return current_rank;
 }
 
