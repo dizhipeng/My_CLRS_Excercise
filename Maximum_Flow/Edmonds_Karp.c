@@ -6,8 +6,10 @@
 #define WHITE 	0
 #define GREY  	1
 #define BLACK  	2
-#define FLOW    0
-#define CF      1
+#define FLOW     0
+#define CF       1
+#define CAPACITY 3
+#define POS_INFINI (0xffffff)
 
 /*Operations and parameters for queue*/
 #define QueueSize 10
@@ -21,7 +23,7 @@ typedef struct adjacency_list
 {
 	/*Basic Fields*/
 	int vertex;		/*Adjacent vertex*/
-	int capacity;		/*Maximum capacity for edge (u,v), 0 if (u,v) not exits but (v,u) exists*/
+	int capacity;	/*Maximum capacity for edge (u,v), 0 if (u,v) not exits but (v,u) exists*/
 	int flow;		/*Curret flow of edge (u,v), namely (u,v).f*/
 	int cf;			/*Residual flow for every residual edge in Gf*/
 	struct adjacency_list *next; 	/*pointer for linked list*/
@@ -43,6 +45,9 @@ typedef struct vertices_array
 
 /*Breadth-first search, source ranges from 'r' to 'y'*/
 int BFS(VERTICES_ARRAY vertices[],char source);
+int set_flow(VERTICES_ARRAY vertices[],int u,int v,int flow,int value);
+int get_flow(VERTICES_ARRAY vertices[],int u,int v,int flow);
+int get_cp(VERTICES_ARRAY vertices[]);
 
 int main(void)
 {
@@ -54,6 +59,11 @@ int main(void)
 
 	int i=0;
 	int vertex_index=0;
+	int cp=0;		/*cf(u,v) for the critical edge*/
+	int vd=-1;		/*vertex v in (u,v)*/
+	int vs=-1;		/*vertex u in (u,v)*/
+	int flow=0;		/*(u,v).f or cf(u,v)*/
+	int temp=0;
 
 	/*The adjacent vertices for every vertex, seperated by |*/
 	char connections[]="uw|vx|swv|uwxt|suvx|wvt";	/*stuvwx*/
@@ -87,9 +97,9 @@ int main(void)
 		if(vertices[vertex_index].Adj==0)
 		{
 			vertices[vertex_index].Adj=new_vertex;
-			vertices[vertex_index].color=WHITE;		/*Color the node to white by the way*/
-			vertices[vertex_index].distance=0;		/*For BFS the distanec to the sourec must be 0*/
-			vertices[vertex_index].pre=-1;	/*For BFS the distanec to the sourec must be 0*/
+			vertices[vertex_index].color=WHITE;				/*Color the node to white to indicate unaccessed*/
+			vertices[vertex_index].distance=POS_INFINI;		/*Distance is positive infinity at first*/
+			vertices[vertex_index].pre=-1;					/*Predecessor doest not exitst initialy*/
 		}
 		else	/*If not, attach it to the next pointer*/
 		{
@@ -100,35 +110,98 @@ int main(void)
 		list_tail=new_vertex;
 	}
 	/*Check the adj list*/
-	printf("Graph G=(V,E)\r\n");
-	printf("Vertices V={s,t,u,v,w,x}\r\n");
-	printf("Edges E={");
+	//printf("Graph G=(V,E)\r\n");
+	//printf("Vertices V={s,t,u,v,w,x}\r\n");
+	//printf("Edges E={");
 	for(i=0,vertex_index=0;i<V_NUM;++i)
 	{
 		new_vertex=vertices[i].Adj;
 		while(new_vertex!=0)
 		{
-			printf("(%c,%c),",i+'s',new_vertex->vertex+'s');
+			//printf("(%c,%c),",i+'s',new_vertex->vertex+'s');
 			new_vertex=new_vertex->next;
 		}
 	}
-	printf("\b}\r\n\r\n");
+	//printf("\b}\r\n\r\n");
 
-	/*Begin BFS from vertex s*/
-	BFS(vertices,'s');
+	while(1)
+	{
+		/*Begin BFS from vertex s in the graph Gf*/
+		BFS(vertices,'s');
+#if 1
+		cp=get_cp(vertices);
 
+		if(cp==-1)	/*Fail to find a augmenting path*/
+		{
+			break;
+		}
+		printf("Increasing flow |f| by cp=%d\r\n",cp);
+
+		vd=1;/*Begin at t*/
+		vs=vertices[vd].pre;
+		
+		while(vs!=-1)	/*For every edge in p, until no source*/
+		{
+			if(get_flow(vertices,vs,vd,CAPACITY)==0)	/*(u,v) not exists, but (v,u) exists*/
+			{
+				flow=get_flow(vertices,vd,vs,FLOW);
+				set_flow(vertices,vd,vs,FLOW,flow-cp);	/*Set flow: (v,u).f-=cp*/
+			}
+			else										/*(u,v) exists*/
+			{
+				flow=get_flow(vertices,vs,vd,FLOW);
+				set_flow(vertices,vs,vd,FLOW,flow+cp);	/*Set flow: (v,u).f+=cp*/	
+			}
+
+			/*Set cf */
+			flow=get_flow(vertices,vs,vd,CF);		/*cf(u,v) decreases by cp in Gf*/
+			set_flow(vertices,vs,vd,CF,flow-cp);
+
+			flow=get_flow(vertices,vd,vs,CF);		/*cf(v,u) increase by cp in Gf*/
+			set_flow(vertices,vd,vs,CF,flow+cp);
+
+			vd=vs;				/*Process pre edge*/
+			vs=vertices[vd].pre;
+		}
+#endif
+		
+	}
+
+	/*Calculate the maximum flow*/
+	for(i=1,flow=0;i<V_NUM;++i)
+	{
+		temp=get_flow(vertices,0,i,FLOW);
+		
+		if(temp>0)	/*If (s,u).f exists*/
+		{
+			flow+=temp;	/*Accumulate in the maximum flow*/
+		}
+
+		temp=get_flow(vertices,i,0,FLOW);
+		if(temp>0)	/*If (u,s).f exists*/
+		{
+			flow-=temp;	/*Substract from the maximum flow*/
+		}
+	}
+
+	printf("The maximum flow of G is %d\r\n",flow);
 }
 
 int BFS(VERTICES_ARRAY vertices[],char source)
 {
-	if(source<'s'||source>'x')
-	{
-		return -1;
-	}
 
 	int i=0;
 
-	printf("Do the Breadth-first search to G, starts from vertex %c:\r\n",source);
+	/*Initialize the vertices, in order to run BFS multiple times*/
+	vertices[source-'s'].distance=0;
+	
+	for(i=0;i<V_NUM;++i)
+	{
+		vertices[i].color=WHITE;
+		vertices[i].pre=-1;
+	}
+
+	//printf("Do the Breadth-first search to G, starts from vertex %c:\r\n",source);
 	ADJACENCY_LIST *current_node=0;	/*Starting from source*/
 	
 	int queue[QueueSize]={0};
@@ -140,14 +213,14 @@ int BFS(VERTICES_ARRAY vertices[],char source)
 	{
 
 		/*Access the dequeued vertex, color it black. It's the current vertex*/
-		printf("Accessing vertex %c, predecessor is %c, distance to source %c is %d\r\n",node_index+'s',vertices[node_index].pre+'s',source,vertices[node_index].distance);
+		//printf("Accessing vertex %c, predecessor is %c, distance to source %c is %d\r\n",node_index+'s',vertices[node_index].pre+'s',source,vertices[node_index].distance);
 		vertices[node_index].color=BLACK;
 
 		/*Equeue every white vertices in the ajdacency list of the current vertex, color them to grey, compute their distances to the source, record its predecessor*/
 		current_node=vertices[node_index].Adj;
 		while(current_node!=0)
 		{
-			if( vertices[current_node->vertex].color==WHITE && current_node->cf!=0 /*When cf(u,v)==0, there is actually no edge from u to v in Gf*/ )
+			if( vertices[current_node->vertex].color==WHITE && current_node->cf>0 /*When cf(u,v)==0, there is actually no edge from u to v in Gf*/ )
 			{
 				enqueue(queue,current_node->vertex);
 				vertices[current_node->vertex].color=GREY;
@@ -161,7 +234,43 @@ int BFS(VERTICES_ARRAY vertices[],char source)
 
 }
 
-int get_flow(VERTICES_ARRAY vertices[],int u,int v,int flow/*flow==FLOW to get f(u,v), flow==CF to get cf(u,v)*/)
+int set_flow(VERTICES_ARRAY vertices[],int u,int v,int flow/*flow==FLOW to get f(u,v), flow==CF to get cf(u,v)*/,int value)
+{
+	ADJACENCY_LIST *edge=vertices[u].Adj;
+
+	while(edge!=0)
+	{
+		if(edge->vertex==v)	/*edge(u,v) is found*/
+		{
+			if( flow==FLOW && edge->capacity!=0 /*The edge must exit to make the flow valid*/)
+			{
+				edge->flow=value;
+				return 0;
+			}
+			else
+			{
+				edge->cf=value;
+				return 0;
+			}
+		}
+
+		edge=edge->next;
+	}
+
+	if(flow==FLOW)
+	{
+		printf("Flow (%c,%c) is invalid, set failed.\r\n",u+'s',v+'s');
+	}
+	else
+	{
+		printf("Residual flow (%c,%c) is invalid, set failed.\r\n",u+'s',v+'s');
+	}
+
+	return -1;
+}
+
+
+int get_flow(VERTICES_ARRAY vertices[],int u,int v,int flow/*flow==FLOW to get f(u,v), flow==CF to get cf(u,v), flow==CAPACITY to get capacity(u,v)*/)
 {
 	ADJACENCY_LIST *edge=vertices[u].Adj;
 
@@ -173,50 +282,60 @@ int get_flow(VERTICES_ARRAY vertices[],int u,int v,int flow/*flow==FLOW to get f
 			{
 				return edge->flow;
 			}
-			else
+			else if(flow==CF)
 			{
 				return edge->cf;
 			}
-
+			else
+			{
+				return edge->capacity;
+			}
 		}
+
+		edge=edge->next;
 	}
 
 	if(flow==FLOW)
 	{
-		printf("Flow (%c,%c) is invalid\r\n",u+'s',v+'s');
+		//printf("Flow (%c,%c) is invalid, get failed.\r\n",u+'s',v+'s');
+	}
+	else if(flow==CF)
+	{
+		printf("Residual flow (%c,%c) is invalid, get failed.\r\n",u+'s',v+'s');
 	}
 	else
 	{
-		printf("Residual flow (%c,%c) is invalid\r\n",u+'s',v+'s');
+		printf("Capacity (%c,%c) is invalid, get failed.\r\n",u+'s',v+'s');
 	}
 
 	return -1;
 }
 
-#if 0
-int get_cp(VERTICES_ARRAY vertices[])	/*cp is the cf of the critical edge in the found augument path for s to t*/
+int get_cp(VERTICES_ARRAY vertices[])	/*cp is the cf of the critical edge in the found augmenting path for s to t*/
 {
-	ADJACENCY_LIST *edge=vertices[u].Adj;
-
 	
-	int vs=1;
-	while(pr!=-1)
-	{
-		//printf("%c<-",pr+'s');
-		pr=vertices[pr].pre;
-	}
+	int vd=1/*Begin at t*/,vs=vertices[vd].pre;
+	int temp,cp=POS_INFINI;
 
-	while(edge!=0)
+	while(vs!=-1)	/*For every edge in p, until no source*/
 	{
-		if(edge->vertex==v)
+		temp=get_flow(vertices,vs,vd,CF);
+		if(temp<cp)
 		{
-			return edge->flow;
+			cp=temp;	/*cp is the minimum cf in the path*/
 		}
+		
+		vd=vs;		/*Process pre edge*/
+		vs=vertices[vd].pre;
 	}
 
-	return -1;
+	if(vd!=0)	/*If fail to track back to source s, then there is no path for s to t*/
+	{
+		return -1;
+	}
+
+	return cp;
 }
-#endif
 
 /*Queue realized in another excercise*/
 int enqueue(int a[],int x)
